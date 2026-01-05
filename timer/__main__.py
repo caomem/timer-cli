@@ -226,7 +226,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
 
     countdown_time_string = createTimeString(hours, minutes, seconds - 1)
     countdown_time_text = Text(
-        text2art(countdown_time_string, font=font), style=TEXT_COLOUR_HIGH_PERCENT
+        text2art(countdown_time_string, font=font).rstrip("\n"), style=TEXT_COLOUR_HIGH_PERCENT
     )
 
     message_text = Text(message, style="cyan")
@@ -237,7 +237,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
         .maximum,
     )
 
-    display_text = Text.assemble(countdown_time_text, message_text)
+    display_text = Text.assemble(countdown_time_text, Text("\n"), message_text)
 
     display = Align.center(display_text, vertical="middle", height=console.height + 1)
 
@@ -260,7 +260,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                     (remaining_time // 60) % 60,
                     remaining_time % 60,
                 )
-                remaining_time_text = Text(text2art(remaining_time_string, font=font))
+                remaining_time_text = Text(text2art(remaining_time_string, font=font).rstrip("\n"))
 
                 time_difference_percentage = remaining_time / time_difference_secs
 
@@ -285,7 +285,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                     .maximum,
                 )
 
-                display_text = Text.assemble(remaining_time_text, message_text)
+                display_text = Text.assemble(remaining_time_text, Text("\n"), message_text)
 
                 display = Align.center(
                     display_text, vertical="middle", height=console.height + 1
