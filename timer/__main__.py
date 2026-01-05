@@ -6,6 +6,7 @@ import re
 import sys
 import time
 from typing import List, Optional, Tuple, Union
+from datetime import datetime, timedelta
 
 import click
 from art import text2art  # type: ignore
@@ -48,6 +49,44 @@ def createTimeString(hrs: Number, mins: Number, secs: Number) -> str:
     return time_string
 
 
+def try_parse_target_datetime(s: str) -> datetime | None:
+    now = datetime.now()
+
+    # Case 1: full ISO datetime
+    try:
+        dt = datetime.fromisoformat(s)
+        return dt
+    except ValueError:
+        pass
+
+    # Case 2: only time -> next occurrence today or tomorrow
+    if s.startswith("T"):
+        try:
+            t = datetime.strptime(s[1:], "%H:%M").time()
+            candidate = datetime.combine(now.date(), t)
+
+            if candidate <= now:
+                candidate += timedelta(days=1)
+
+            return candidate
+        except ValueError:
+            pass
+
+    return None
+
+def datetime_to_hms(target_dt: datetime) -> tuple[int, int, int]:
+    delta = target_dt - datetime.now()
+    total_seconds = int(delta.total_seconds())
+
+    if total_seconds <= 0:
+        raise ValueError("Target datetime is in the past")
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    return hours, minutes, seconds
+
 def parseDurationString(
     duration_str: str,
 ) -> Tuple[bool, Union[List[Optional[str]], str]]:
@@ -58,7 +97,7 @@ def parseDurationString(
 
     return (
         False,
-        f"Invalid duration string: {duration_str} \n\nPlease use the format __h__m__s or view the help for example usage.",
+        f"Invalid duration string: {duration_str} \n\nPlease use the available formats (__h__m__s, YYYY-MM-DDTHH:MM, THH:MM) or view the help for example usage.",
     )
 
 
@@ -81,30 +120,44 @@ def parseDurationString(
 )
 def main(duration: Optional[str], no_bell: bool, message: str) -> None:
     """
-    DURATION is the duration of your timer, a number followed by h or m or s for hours, minutes or seconds
+    \b
+    DURATION is the duration of your timer. It can be either:
+        - A duration string (__h__m__s)
+        - An absolute datetime (YYYY-MM-DDTHH:MM)
+        - A time only, meaning the next occurrence (T14:00)
 
     \b
     Example usage:
         $ timer 1h30m
         $ timer 25m
         $ timer 15m30s
+        $ timer 2026-01-25T14:00
+        $ timer T14:00
     """
     console = Console()
 
     if not duration or not duration.strip():
         console.print(
-            f"[red]Please specify a timer duration. \n\nPlease use the format __h__m__s or view the help for example usage.[/red]"
+            f"[red]Please specify a timer duration. \n\nPlease use the available formats (__h__m__s, YYYY-MM-DDTHH:MM, THH:MM) or view the help for example usage.[/red]"
         )
         sys.exit(1)
 
-    success, res = parseDurationString(duration.strip())
-    if not success:
-        console.print(f"[red]{res}[/red]")
-        sys.exit(1)
+    target_dt = try_parse_target_datetime(duration.strip())
+    if target_dt is not None:
+        try:
+            hours, minutes, seconds = datetime_to_hms(target_dt)
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            sys.exit(1)
+    else:
+        success, res = parseDurationString(duration.strip())
+        if not success:
+            console.print(f"[red]{res}[/red]")
+            sys.exit(1)
 
-    hours = int(res[0][:-1]) if res[0] else 0
-    minutes = int(res[1][:-1]) if res[1] else 0
-    seconds = int(res[2][:-1]) + 1 if res[2] else 0
+        hours = int(res[0][:-1]) if res[0] else 0
+        minutes = int(res[1][:-1]) if res[1] else 0
+        seconds = int(res[2][:-1]) + 1 if res[2] else 0
 
     if hours == 0 and minutes == 0 and seconds - 1 <= 0:
         console.print(f"[red]The timer duration cannot be zero.[/red]")
