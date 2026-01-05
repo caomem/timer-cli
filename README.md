@@ -20,13 +20,20 @@ $ timer [options] duration
 
 ### How to specify a duration
 
-Syntax for a duration is `__h__m__s` where the hour, minute and second values are all optional.
+The duration of your timer can be either:
+  - A duration string (`__h__m__s`)
+  - An absolute datetime (`YYYY-MM-DD`, or `YYYY-MM-DDTHH:MM:SS`)
+  - A time only, meaning the next occurrence (`THH:MM:SS`)
 
 #### Duration examples
 
-- 2mins 30secs - `2m30s`
-- 10hrs 5secs - `10h5s`
-- 1hr 25mins 45secs - `1h25m45s`
+```bash
+timer 1h30m #1hr 30mins
+timer 25m #25mins
+timer 15m30s #15mins 30secs
+timer 2026-01-25T14:00
+timer T14:00
+```
 
 ### Options
 
@@ -41,6 +48,13 @@ Use this flag to specify a message to display under the timer. Make sure to surr
 ```bash
 $ timer 1h30m -m "Review the pull requests"
 ```
+
+#### --font
+You can customize the font used to render the timer with 
+```bash 
+timer --font <font_name> duration
+```
+Check for available fonts with `timer --list-fonts`
 
 ## Contributing
 

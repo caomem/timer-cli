@@ -137,8 +137,8 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
     \b
     DURATION is the duration of your timer. It can be either:
         - A duration string (__h__m__s)
-        - An absolute datetime (YYYY-MM-DDTHH:MM)
-        - A time only, meaning the next occurrence (T14:00)
+        - An absolute datetime (YYYY-MM-DDTHH:MM:SS)
+        - A time only, meaning the next occurrence (THH:MM:SS)
 
     \b
     Example usage:
