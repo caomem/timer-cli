@@ -8,6 +8,11 @@ import time
 from typing import List, Optional, Tuple, Union
 from datetime import datetime, timedelta
 
+import termios
+import tty
+import select
+from contextlib import contextmanager
+
 import click
 from art import text2art  # type: ignore
 from art import FONT_NAMES
@@ -29,6 +34,20 @@ CONTEXT_SETTINGS: dict = dict(help_option_names=["-h", "--help"])
 
 Number = Union[int, float]
 
+@contextmanager
+def raw_stdin():
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+        yield
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+def read_key_nonblocking() -> str | None:
+    if select.select([sys.stdin], [], [], 0)[0]:
+        return sys.stdin.read(1)
+    return None
 
 def standardize_time_str(num: Number) -> str:
     num = round(num)
@@ -250,11 +269,23 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
 
     time_difference_secs = target_time - start_time - 1
 
+    paused = False
+    last_tick = time.time()
+
+    remaining_time = (hours * 3600) + (minutes * 60) + seconds - 1
+
     try:
-        with Live(display, screen=True) as live:
-            time.sleep(1)
-            while round(target_time) > round(time.time()):
-                remaining_time = math.floor(target_time) - math.floor(time.time())
+        with raw_stdin(), Live(display, screen=True) as live:
+            while remaining_time > 0:
+                now = time.time()
+
+                key = read_key_nonblocking()
+                if key == " ":
+                    paused = not paused
+
+                if not paused:
+                    remaining_time -= 1
+
                 remaining_time_string = createTimeString(
                     remaining_time // 3600,
                     (remaining_time // 60) % 60,
@@ -273,9 +304,8 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                 else:
                     remaining_time_text.stylize(TEXT_COLOUR_LOW_PERCENT)
 
-                display_time = Align.center(
-                    remaining_time_text, vertical="middle", height=console.height + 1
-                )
+                if paused:
+                    remaining_time_text.append("\n[PAUSED — press SPACE to continue]", style="bold yellow")
 
                 message_text = Text(message, style="cyan")
                 message_text.align(
