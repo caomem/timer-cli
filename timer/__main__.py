@@ -8,9 +8,13 @@ import time
 from typing import List, Optional, Tuple, Union
 from datetime import datetime, timedelta
 
-import termios
-import tty
-import select
+IS_WINDOWS = os.name == "nt"
+ENABLE_PAUSE = not IS_WINDOWS
+
+if ENABLE_PAUSE:
+    import termios
+    import tty
+    import select
 from contextlib import contextmanager
 
 import click
@@ -34,20 +38,28 @@ CONTEXT_SETTINGS: dict = dict(help_option_names=["-h", "--help"])
 
 Number = Union[int, float]
 
-@contextmanager
-def raw_stdin():
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setcbreak(fd)
-        yield
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+if ENABLE_PAUSE:
+    @contextmanager
+    def raw_stdin():
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+            yield
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-def read_key_nonblocking() -> str | None:
-    if select.select([sys.stdin], [], [], 0)[0]:
-        return sys.stdin.read(1)
-    return None
+    def read_key_nonblocking() -> str | None:
+        if select.select([sys.stdin], [], [], 0)[0]:
+            return sys.stdin.read(1)
+        return None
+else:
+    @contextmanager
+    def raw_stdin():
+        yield
+
+    def read_key_nonblocking() -> None:
+        return None
 
 def standardize_time_str(num: Number) -> str:
     num = round(num)
@@ -270,7 +282,6 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
     time_difference_secs = target_time - start_time - 1
 
     paused = False
-    last_tick = time.time()
 
     remaining_time = (hours * 3600) + (minutes * 60) + seconds - 1
 
@@ -278,10 +289,11 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
         with raw_stdin(), Live(display, screen=True) as live:
             while remaining_time > 0:
                 now = time.time()
-
-                key = read_key_nonblocking()
-                if key == " ":
-                    paused = not paused
+                
+                if ENABLE_PAUSE:
+                    key = read_key_nonblocking()
+                    if key == " ":
+                        paused = not paused
 
                 if not paused:
                     remaining_time -= 1
