@@ -297,9 +297,9 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                             target_time += now - paused_at
 
                 if paused:
-                    remaining_time = math.floor(target_time - paused_at)
+                    remaining_time = math.ceil(target_time - paused_at)
                 else:
-                    remaining_time = math.floor(target_time - now)
+                    remaining_time = math.ceil(target_time - now)
 
                 remaining_time_string = createTimeString(
                     remaining_time // 3600,
