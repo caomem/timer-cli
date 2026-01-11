@@ -249,13 +249,13 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
 
         hours = int(res[0][:-1]) if res[0] else 0
         minutes = int(res[1][:-1]) if res[1] else 0
-        seconds = int(res[2][:-1]) + 1 if res[2] else 0
+        seconds = int(res[2][:-1]) if res[2] else 0
 
-    if hours == 0 and minutes == 0 and seconds - 1 <= 0:
+    if hours == 0 and minutes == 0 and seconds == 0:
         console.print(f"[red]The timer duration cannot be zero.[/red]")
         sys.exit(1)
 
-    countdown_time_string = createTimeString(hours, minutes, seconds - 1)
+    countdown_time_string = createTimeString(hours, minutes, seconds)
     countdown_time_text = Text(
         text2art(countdown_time_string, font=font).rstrip("\n"), style=TEXT_COLOUR_HIGH_PERCENT
     )
@@ -275,28 +275,31 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
     start_time = math.floor(time.time())
 
     target_time = start_time + (hours * 3600) + (minutes * 60) + seconds
-
-    if seconds != 0:
-        target_time -= 1
-
-    time_difference_secs = target_time - start_time - 1
+    initial_duration = target_time - start_time
 
     paused = False
-
-    remaining_time = (hours * 3600) + (minutes * 60) + seconds - 1
+    paused_at = None
+    last_remaining_time = None
 
     try:
         with raw_stdin(), Live(display, screen=True) as live:
-            while remaining_time > 0:
+            while True:
                 now = time.time()
                 
                 if ENABLE_PAUSE:
                     key = read_key_nonblocking()
                     if key == " ":
-                        paused = not paused
+                        if not paused:
+                            paused = True
+                            paused_at = now
+                        else:
+                            paused = False
+                            target_time += now - paused_at
 
-                if not paused:
-                    remaining_time -= 1
+                if paused:
+                    remaining_time = math.floor(target_time - paused_at)
+                else:
+                    remaining_time = math.floor(target_time - now)
 
                 remaining_time_string = createTimeString(
                     remaining_time // 3600,
@@ -305,7 +308,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                 )
                 remaining_time_text = Text(text2art(remaining_time_string, font=font).rstrip("\n"))
 
-                time_difference_percentage = remaining_time / time_difference_secs
+                time_difference_percentage = remaining_time / initial_duration
 
                 if TIMER_HIGH_PERCENT < time_difference_percentage <= 1:
                     remaining_time_text.stylize(TEXT_COLOUR_HIGH_PERCENT)
@@ -334,10 +337,13 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                 )
 
                 live.update(display)
+                
+                if remaining_time <= 0:
+                    break
                 time.sleep(1)
 
         with console.screen(style="bold white on red") as screen:
-            while True:
+            while False:
                 if not no_bell:
                     console.bell()
 
