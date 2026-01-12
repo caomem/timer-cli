@@ -9,9 +9,9 @@ from typing import List, Optional, Tuple, Union
 from datetime import datetime, timedelta
 
 IS_WINDOWS = os.name == "nt"
-ENABLE_PAUSE = not IS_WINDOWS
+ENABLE_INPUT = not IS_WINDOWS
 
-if ENABLE_PAUSE:
+if ENABLE_INPUT:
     import termios
     import tty
     import select
@@ -38,7 +38,7 @@ CONTEXT_SETTINGS: dict = dict(help_option_names=["-h", "--help"])
 
 Number = Union[int, float]
 
-if ENABLE_PAUSE:
+if ENABLE_INPUT:
     @contextmanager
     def raw_stdin():
         fd = sys.stdin.fileno()
@@ -81,6 +81,10 @@ def createTimeString(hrs: Number, mins: Number, secs: Number) -> str:
 
     return time_string
 
+def createDateString(hrs: Number, mins: Number, secs: Number) -> str:
+    total_seconds = hrs * 3600 + mins * 60 + secs
+    days = total_seconds / 86400  # 24 * 60 * 60
+    return f"{days:.2f} Days"
 
 def try_parse_target_datetime(s: str) -> datetime | None:
     now = datetime.now()
@@ -152,6 +156,12 @@ def parseDurationString(
     help="Do not ring the terminal bell once the timer is over",
 )
 @click.option(
+    "--days",
+    default=False,
+    is_flag=True,
+    help="To show the timer in days",
+)
+@click.option(
     "--font",
     type=str,
     default=DEFAULT_FONT,
@@ -163,7 +173,7 @@ def parseDurationString(
     is_flag=True,
     help="List available fonts and exit",
 )
-def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_fonts: bool) -> None:
+def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_fonts: bool, days: bool) -> None:
     """
     \b
     DURATION is the duration of your timer. It can be either:
@@ -261,6 +271,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
     initial_duration = target_time - start_time
 
     paused = False
+    in_days = days
     paused_at = None
     last_remaining_time = None
 
@@ -270,7 +281,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
             while True:
                 now = time.time()
                 
-                if ENABLE_PAUSE:
+                if ENABLE_INPUT:
                     key = read_key_nonblocking()
                     if key == " ":
                         if not paused:
@@ -279,17 +290,24 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                         else:
                             paused = False
                             target_time += now - paused_at
+                    elif key == "d":
+                        in_days = not in_days
 
                 if paused:
-                    remaining_time = math.max(0, math.ceil(target_time - paused_at))
+                    remaining_time = max(0, math.ceil(target_time - paused_at))
                 else:
-                    remaining_time = math.max(0, math.ceil(target_time - now))
+                    remaining_time = max(0, math.ceil(target_time - now))
 
-                remaining_time_string = createTimeString(
-                    remaining_time // 3600,
-                    (remaining_time // 60) % 60,
-                    remaining_time % 60,
-                )
+                if in_days:
+                    days = remaining_time/86400 # 24 * 60 * 60
+                    label = "Day" if round(days, 2) == 1 else "Days"
+                    remaining_time_string = f"{days:.2f} {label}"
+                else:
+                    remaining_time_string = createTimeString(
+                        remaining_time // 3600,
+                        (remaining_time // 60) % 60,
+                        remaining_time % 60,
+                    )
                 remaining_time_text = Text(text2art(remaining_time_string, font=font).rstrip("\n"))
 
                 time_difference_percentage = remaining_time / initial_duration
