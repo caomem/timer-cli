@@ -255,24 +255,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
         console.print(f"[red]The timer duration cannot be zero.[/red]")
         sys.exit(1)
 
-    countdown_time_string = createTimeString(hours, minutes, seconds)
-    countdown_time_text = Text(
-        text2art(countdown_time_string, font=font).rstrip("\n"), style=TEXT_COLOUR_HIGH_PERCENT
-    )
-
-    message_text = Text(message, style="cyan")
-    message_text.align(
-        "center",
-        Measurement.get(console, console.options, countdown_time_text)
-        .normalize()
-        .maximum,
-    )
-
-    display_text = Text.assemble(countdown_time_text, Text("\n"), message_text)
-
-    display = Align.center(display_text, vertical="middle", height=console.height + 1)
-
-    start_time = math.floor(time.time())
+    start_time = time.time()
 
     target_time = start_time + (hours * 3600) + (minutes * 60) + seconds
     initial_duration = target_time - start_time
@@ -281,8 +264,9 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
     paused_at = None
     last_remaining_time = None
 
+    initial_display = Align.center(Text(" "), vertical="middle", height=console.height + 1)
     try:
-        with raw_stdin(), Live(display, screen=True) as live:
+        with raw_stdin(), Live(initial_display, screen=True) as live:
             while True:
                 now = time.time()
                 
@@ -297,9 +281,9 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                             target_time += now - paused_at
 
                 if paused:
-                    remaining_time = math.ceil(target_time - paused_at)
+                    remaining_time = math.max(0, math.ceil(target_time - paused_at))
                 else:
-                    remaining_time = math.ceil(target_time - now)
+                    remaining_time = math.max(0, math.ceil(target_time - now))
 
                 remaining_time_string = createTimeString(
                     remaining_time // 3600,
