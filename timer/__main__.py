@@ -156,6 +156,12 @@ def parseDurationString(
     help="Do not ring the terminal bell once the timer is over",
 )
 @click.option(
+    "--auto-close",
+    default=False,
+    is_flag=True,
+    help="Auto-close on timer finish",
+)
+@click.option(
     "--days",
     default=False,
     is_flag=True,
@@ -173,7 +179,7 @@ def parseDurationString(
     is_flag=True,
     help="List available fonts and exit",
 )
-def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_fonts: bool, days: bool) -> None:
+def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str, font: str, list_fonts: bool, days: bool) -> None:
     """
     \b
     DURATION is the duration of your timer. It can be either:
@@ -345,7 +351,7 @@ def main(duration: Optional[str], no_bell: bool, message: str, font: str, list_f
                 time.sleep(1)
 
         with console.screen(style="bold white on red") as screen:
-            while True:
+            while not auto_close:
                 if not no_bell:
                     console.bell()
 
