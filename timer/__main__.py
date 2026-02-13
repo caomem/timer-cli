@@ -27,6 +27,7 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 from rich.measure import Measurement
+import subprocess
 
 DEFAULT_FONT: str = os.environ.get("TIMER_FONT", "c1")
 TEXT_COLOUR_HIGH_PERCENT: str = "green"
@@ -37,6 +38,21 @@ TIMER_LOW_PERCENT: float = 0.2
 CONTEXT_SETTINGS: dict = dict(help_option_names=["-h", "--help"])
 
 Number = Union[int, float]
+
+def play_linux_alarm(step):
+    if step == 0:
+        sound_path = "/usr/share/sounds/freedesktop/stereo/complete.oga"
+    elif step == 1:
+        sound_path = "/usr/share/sounds/freedesktop/stereo/service-logout.oga"
+    else:
+        sound_path = "/usr/share/sounds/freedesktop/stereo/suspend-error.oga"
+    if os.path.exists(sound_path):
+        return subprocess.Popen(
+            ["ffplay", sound_path, "-nodisp", "-loglevel", "error"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    return None
 
 if ENABLE_INPUT:
     @contextmanager
@@ -89,14 +105,12 @@ def createDateString(hrs: Number, mins: Number, secs: Number) -> str:
 def try_parse_target_datetime(s: str) -> datetime | None:
     now = datetime.now()
 
-    # Case 1: full ISO datetime
     try:
         dt = datetime.fromisoformat(s)
         return dt
     except ValueError:
         pass
 
-    # Case 2: only time -> next occurrence today or tomorrow
     if s.startswith("T"):
         try:
             t = datetime.strptime(s[1:], "%H:%M").time()
@@ -280,6 +294,7 @@ def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str,
     in_days = days
     paused_at = None
     last_remaining_time = None
+    step = 0
 
     initial_display = Align.center(Text(" "), vertical="middle", height=console.height + 1)
     try:
@@ -318,13 +333,17 @@ def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str,
 
                 time_difference_percentage = remaining_time / initial_duration
 
-                if TIMER_HIGH_PERCENT < time_difference_percentage <= 1:
+                if TIMER_HIGH_PERCENT < time_difference_percentage:
                     remaining_time_text.stylize(TEXT_COLOUR_HIGH_PERCENT)
-                elif (
-                    TIMER_LOW_PERCENT < time_difference_percentage <= TIMER_HIGH_PERCENT
-                ):
+                elif (TIMER_LOW_PERCENT < time_difference_percentage <= TIMER_HIGH_PERCENT):
+                    if step == 0 and not IS_WINDOWS and not no_bell:
+                        play_linux_alarm(0)
+                        step = 1
                     remaining_time_text.stylize(TEXT_COLOUR_MID_PERCENT)
                 else:
+                    if step == 1 and not IS_WINDOWS and not no_bell:
+                        play_linux_alarm(1)
+                        step = 2
                     remaining_time_text.stylize(TEXT_COLOUR_LOW_PERCENT)
 
                 if paused:
@@ -350,6 +369,8 @@ def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str,
                     break
                 time.sleep(1)
 
+        if not IS_WINDOWS and not no_bell:
+            play_linux_alarm(2)
         with console.screen(style="bold white on red") as screen:
             while not auto_close:
                 if not no_bell:
