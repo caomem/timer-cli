@@ -44,6 +44,8 @@ def play_linux_alarm(step):
         sound_path = "/usr/share/sounds/freedesktop/stereo/complete.oga"
     elif step == 1:
         sound_path = "/usr/share/sounds/freedesktop/stereo/service-logout.oga"
+    elif step == -1:
+        sound_path = "/usr/share/sounds/freedesktop/stereo/dialog-warning.oga"
     else:
         sound_path = "/usr/share/sounds/freedesktop/stereo/suspend-error.oga"
     if os.path.exists(sound_path):
@@ -193,7 +195,14 @@ def parseDurationString(
     is_flag=True,
     help="List available fonts and exit",
 )
-def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str, font: str, list_fonts: bool, days: bool) -> None:
+@click.option(
+    "--bip",
+    type=int,
+    default=-1,
+    show_default=True,
+    help="Plays a bip in the given period",
+)
+def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str, font: str, list_fonts: bool, days: bool, bip: int) -> None:
     """
     \b
     DURATION is the duration of your timer. It can be either:
@@ -293,7 +302,7 @@ def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str,
     paused = False
     in_days = days
     paused_at = None
-    last_remaining_time = None
+    last_bip = initial_duration
     step = 0
 
     initial_display = Align.center(Text(" "), vertical="middle", height=console.height + 1)
@@ -330,6 +339,10 @@ def main(duration: Optional[str], no_bell: bool, auto_close: bool, message: str,
                         remaining_time % 60,
                     )
                 remaining_time_text = Text(text2art(remaining_time_string, font=font).rstrip("\n"))
+
+                if bip > 0 and not IS_WINDOWS and not no_bell and last_bip != remaining_time and (remaining_time+initial_duration)%bip == 0:
+                    last_bip = remaining_time
+                    play_linux_alarm(-1)
 
                 time_difference_percentage = remaining_time / initial_duration
 
