@@ -210,7 +210,7 @@ def update_timer(timer, now, font, main: bool):
         )
         label = ""
     short_msg = f"\n{timer.message[:10]}" if timer.message else ""
-    timer.text = Text(f"{remaining_time_string}{short_msg}", style="frame", justify="center")
+    timer.text = Text(f"{remaining_time_string+label[:2]}{short_msg}", style="frame", justify="center")
     if main:
         timer.text.stylize("bold")
         main_text = Text(text2art(remaining_time_string+label, font=font).rstrip("\n"), style="frame")
@@ -226,21 +226,21 @@ def update_timer(timer, now, font, main: bool):
         if main:
             main_text.stylize("bold white on red blink")
     elif TIMER_HIGH_PERCENT < time_difference_percentage:
-        timer.text.stylize("white on "+TEXT_COLOUR_HIGH_PERCENT)
+        timer.text.stylize(TEXT_COLOUR_HIGH_PERCENT)
         if main:
             main_text.stylize(TEXT_COLOUR_HIGH_PERCENT)
     elif (TIMER_LOW_PERCENT < time_difference_percentage <= TIMER_HIGH_PERCENT):
         if timer.step == 0 and not IS_WINDOWS and not timer.no_bell:
             play_linux_alarm(0)
             timer.step = 1
-        timer.text.stylize("white on "+TEXT_COLOUR_MID_PERCENT)
+        timer.text.stylize(TEXT_COLOUR_MID_PERCENT)
         if main:
             main_text.stylize(TEXT_COLOUR_MID_PERCENT)
     else:
         if timer.step == 1 and not IS_WINDOWS and not timer.no_bell:
             play_linux_alarm(1)
             timer.step = 2
-        timer.text.stylize("white on "+TEXT_COLOUR_LOW_PERCENT)
+        timer.text.stylize(TEXT_COLOUR_LOW_PERCENT)
         if main:
             main_text.stylize(TEXT_COLOUR_LOW_PERCENT)
 
@@ -477,7 +477,7 @@ def main(args: Tuple[str], no_bell: bool, auto_close: bool, font: str, list_font
                     elif not _timer.done:
                         update_timer(_timer, now, font=font, main = False)                    
 
-                tabs = Columns([t.text for t in timers])
+                tabs = Columns([t.text for t in timers], expand=True)
 
                 message_text = Text(timer.message, style="cyan")
                 message_text.align(
