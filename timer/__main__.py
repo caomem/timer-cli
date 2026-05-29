@@ -287,19 +287,27 @@ def main(args: Tuple[str], no_bell: bool, auto_close: bool, font: str, list_font
         - A time only, meaning the next occurrence (THH:MM:SS)
 
     \b
-    Example usage:
+    Example usage (Single Timer):
         $ timer 1h30m
-        $ timer 25m
-        $ timer 15m30s
-        $ timer 2026-01-25T14:00
-        $ timer T14:00
+        $ timer 25m -m "Focus" --bip 300
 
-    Obs: You can customize the font used to render the timer with:
-    
     \b
-    timer 25m --font fraktur
-    timer --list-fonts
+    Example usage (Multiple Timers):
+        $ timer 25m -m "Pomodoro" 5m -m "Break"
+        $ timer T14:00 -m "Meeting" 2026-05-13 -m "Exam" -d
 
+    \b
+    Interactive Controls:
+        [Space]       Pause/Resume current timer
+        [Left/Right]  Cycle through active timers
+        [d]           Cycle time display (HMS, Days, Weeks, Months, Years)
+        [q]           Close/Delete current timer
+        [z] or [b]    Undo close (restore last deleted timer)
+
+    \b
+    Obs: You can customize the font globally:
+        $ timer 25m --font fraktur
+        $ timer --list-fonts
     """
     console = Console()
 
